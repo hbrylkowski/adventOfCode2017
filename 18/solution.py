@@ -46,34 +46,43 @@ sent = 0
 
 def program(p, rcv_queue, snd_queue):
     commands = data.split("\n")
-    registers = {chr(i): 0 for i in range(ord('a'), ord('p')+1)}
-    registers['p'] = p
+    registers = {'p': p}
     index = 0
     while True:
-        i = commands[index]
-        command = i[:3]
+        operation = commands[index].split(" ")
+
+        command = operation[0]
+
+        if command in ('set', 'add', 'mul', 'mod', 'rcv'):
+            modified_register = operation[1]
+        else:
+            operand = registers.get(operation[1], 0) if operation[1].isalpha() else int(operation[1])
+
+        if command in ('set', 'add', 'mul', 'mod', 'jgz'):
+            value = registers.get(operation[2], 0) if operation[2].isalpha() else int(operation[2])
+
         if command == 'set':
-            registers[i[4]] = int(registers.get(i[6:], i[6:]))
+            registers[modified_register] = value
         elif command == 'add':
-            registers[i[4]] += int(registers.get(i[6:], i[6:]))
+            registers[modified_register] += value
         elif command == 'mul':
-            registers[i[4]] *= int(registers.get(i[6:], i[6:]))
+            registers[modified_register] *= value
         elif command == 'mod':
-            registers[i[4]] %= int(registers.get(i[6:], i[6:]))
+            registers[modified_register] %= value
+        elif command == 'jgz':
+            if operand > 0:
+                index += value
+                continue
         elif command == 'snd':
-            snd_queue.append(int(registers.get(i[4:], i[4:])))
+            snd_queue.append(operand)
             if p == 1:
                 global sent
                 sent += 1
         elif command == 'rcv':
             try:
-                registers[i[4]] = rcv_queue.pop(0)
-            except Exception:
+                registers[modified_register] = rcv_queue.pop(0)
+            except IndexError:
                 yield 1
-                continue
-        elif command == 'jgz':
-            if int(registers.get(i[4], i[4])) > 0:
-                index += int(registers.get(i[6:], i[6:]))
                 continue
 
         index += 1
